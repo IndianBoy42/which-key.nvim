@@ -24,11 +24,6 @@ function M.setup(options)
   schedule_load()
 end
 
-function M.execute(id)
-  local func = Keys.functions[id]
-  return func()
-end
-
 function M.show(keys, opts)
   opts = opts or {}
   if type(opts) == "string" then

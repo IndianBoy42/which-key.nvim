@@ -8,7 +8,6 @@ local secret = "Þ"
 ---@class Keys
 local M = {}
 
-M.functions = {}
 M.operators = {}
 M.nowait = {}
 M.blacklist = {}
@@ -209,14 +208,6 @@ function M.parse_mappings(mappings, value, prefix)
           error("Invalid key mapping: " .. vim.inspect(value))
         end
       end
-      if mapping.cmd and type(mapping.cmd) == "function" then
-        table.insert(M.functions, mapping.cmd)
-        if mapping.opts.expr then
-          mapping.cmd = string.format([[luaeval('require("which-key").execute(%d)')]], #M.functions)
-        else
-          mapping.cmd = string.format([[<cmd>lua require("which-key").execute(%d)<cr>]], #M.functions)
-        end
-      end
       table.insert(mappings, mapping)
     end
   else
@@ -256,12 +247,13 @@ function M.map(mode, prefix, cmd, buf, opts)
   if other then
     table.insert(M.duplicates, { mode = mode, prefix = prefix, cmd = cmd, buf = buf, other = other })
   end
-  cmd = cmd:gsub("[\\]", "<bslash>")
-  if buf ~= nil then
-    pcall(vim.api.nvim_buf_set_keymap, buf, mode, prefix, cmd, opts)
-  else
-    pcall(vim.api.nvim_set_keymap, mode, prefix, cmd, opts)
+  if type(cmd) == "string" then
+    cmd = cmd:gsub("[\\]", "<bslash>")
   end
+  if buf ~= nil then
+    opts = vim.tbl_extend("keep", opts or {}, { buffer = buf })
+  end
+  vim.keymap.set(mode, prefix, cmd, opts)
 end
 
 function M.register(mappings, opts)
@@ -295,8 +287,10 @@ function M.register(mappings, opts)
         nowait = mapping.opts.nowait or false,
         expr = mapping.opts.expr or false,
       }
-      if mapping.cmd:lower():sub(1, #"<plug>") == "<plug>" then
-        keymap_opts.noremap = false
+      if type(mapping.cmd) == "string" then
+        if mapping.cmd:lower():sub(1, #"<plug>") == "<plug>" then
+          keymap_opts.noremap = false
+        end
       end
       M.map(mapping.mode, mapping.prefix, mapping.cmd, mapping.buf, keymap_opts)
     end
@@ -514,7 +508,7 @@ function M.is_hook(prefix, cmd)
   -- skip mappings with our secret nop command
   local has_secret = prefix:find(secret)
   -- skip auto which-key mappings
-  local has_wk = cmd and cmd:find("which%-key") and cmd:find("auto") or false
+  local has_wk = cmd and type(cmd) == "string" and cmd:find("which%-key") and cmd:find("auto") or false
   return has_wk or has_secret
 end
 
