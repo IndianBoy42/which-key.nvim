@@ -13,7 +13,12 @@ local function schedule_load()
   end
   scheduled = true
   if vim.v.vim_did_enter == 0 then
-    vim.cmd([[au VimEnter * ++once lua require("which-key").load()]])
+    vim.cmd([[
+    augroup which_key_load
+    au!
+    au VimEnter * ++once lua require("which-key").load()
+    augroup END
+    ]])
   else
     M.load()
   end
